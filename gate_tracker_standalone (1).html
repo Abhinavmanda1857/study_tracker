@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GATE CSE 2027</title>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --card: #111318;
+    --card-hover: #15181f;
+    --border: #1e2229;
+    --border-light: #262c36;
+    --text: #eaeef4;
+    --sub: #8b949e;
+    --dim: #484f58;
+    --blue: #4d9cf8;
+    --green: #3fb950;
+    --amber: #e3a008;
+    --purple: #a78bfa;
+    --blue-dim: rgba(77,156,248,0.12);
+    --green-dim: rgba(63,185,80,0.12);
+    --amber-dim: rgba(227,160,8,0.12);
+    --purple-dim: rgba(167,139,250,0.12);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 14px; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'SF Pro Text', 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 60px;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10,12,16,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .topbar-title { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+  .topbar-sub { font-size: 11px; color: var(--sub); margin-top: 1px; }
+  .stats-row { display: flex; gap: 20px; }
+  .stat { text-align: center; }
+  .stat-val { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+  .stat-lbl { font-size: 10px; color: var(--sub); margin-top: 3px; letter-spacing: 0.02em; }
+  .stat-val.blue  { color: var(--blue); }
+  .stat-val.green { color: var(--green); }
+  .stat-val.purple{ color: var(--purple); }
+
+  /* ── MAIN ── */
+  .main { max-width: 680px; margin: 0 auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 8px; }
+
+  /* ── PHASE LABEL ── */
+  .phase-label {
+    font-size: 10px; font-weight: 600; color: var(--dim);
+    letter-spacing: 0.08em; padding: 8px 4px 4px;
+    text-transform: uppercase;
+  }
+
+  /* ── SUBJECT CARD ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .card:hover { border-color: var(--border-light); }
+  .card.expanded { border-color: var(--border-light); }
+  .card.roi-s { border-left: 3px solid var(--green); }
+  .card.roi-a { border-left: 3px solid var(--amber); }
+  .card.roi-b { border-left: 3px solid var(--dim); }
+
+  /* ── CARD HEADER ── */
+  .card-head {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 18px;
+    cursor: pointer; user-select: none;
+  }
+  .card-head:hover { background: var(--card-hover); }
+
+  .card-rank {
+    font-size: 11px; font-weight: 700; color: var(--dim);
+    min-width: 20px; text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .card-info { flex: 1; min-width: 0; }
+  .card-name { font-size: 14px; font-weight: 600; letter-spacing: -0.1px; }
+  .card-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .pill {
+    font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 20px;
+    letter-spacing: 0.02em;
+  }
+  .pill-marks { background: var(--blue-dim); color: var(--blue); }
+  .pill-s { background: var(--green-dim); color: var(--green); }
+  .pill-a { background: var(--amber-dim); color: var(--amber); }
+  .pill-b { background: rgba(72,79,88,0.3); color: var(--dim); }
+
+  /* ── MINI BARS (header, read-only) ── */
+  .card-progress { display: flex; flex-direction: column; gap: 5px; min-width: 120px; }
+  .mini-bar-row { display: flex; align-items: center; gap: 8px; }
+  .mini-label { font-size: 9px; color: var(--dim); width: 44px; text-align: right; flex-shrink: 0; }
+  .mini-track { flex: 1; height: 3px; background: var(--border-light); border-radius: 2px; }
+  .mini-fill  { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+  .mini-pct   { font-size: 9px; color: var(--sub); width: 26px; font-variant-numeric: tabular-nums; }
+
+  .card-chevron { color: var(--dim); font-size: 10px; transition: transform 0.2s; flex-shrink: 0; }
+  .card.expanded .card-chevron { transform: rotate(90deg); }
+
+  /* ── EXPANDED BODY ── */
+  .card-body { display: none; border-top: 1px solid var(--border); }
+  .card.expanded .card-body { display: block; }
+
+  /* ── STEP CONTROL (replaces drag bar) ── */
+  .full-bars { padding: 18px 20px 14px; display: flex; flex-direction: column; gap: 16px; }
+
+  .ctrl-row { display: flex; align-items: center; gap: 12px; }
+  .ctrl-label { font-size: 11px; color: var(--sub); width: 110px; flex-shrink: 0; }
+
+  /* the 5 step buttons: 0 25 50 75 100 */
+  .steps { display: flex; gap: 4px; flex: 1; }
+  .step-btn {
+    flex: 1; height: 28px; border-radius: 5px;
+    border: 1px solid var(--border-light);
+    background: transparent; cursor: pointer;
+    font-size: 10px; font-weight: 600; color: var(--dim);
+    transition: all 0.13s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-btn:hover { border-color: var(--sub); color: var(--sub); }
+  /* active = filled up to this step */
+  .step-btn.active-t { background: var(--blue);  border-color: var(--blue);  color: #0a0c10; }
+  .step-btn.active-p { background: var(--green); border-color: var(--green); color: #0a0c10; }
+  .step-btn.active-r { background: var(--purple);border-color: var(--purple);color: #0a0c10; }
+  /* filled but not the selected one */
+  .step-btn.filled-t { background: rgba(77,156,248,0.18);  border-color: rgba(77,156,248,0.35);  color: var(--blue); }
+  .step-btn.filled-p { background: rgba(63,185,80,0.18);   border-color: rgba(63,185,80,0.35);   color: var(--green); }
+  .step-btn.filled-r { background: rgba(167,139,250,0.18); border-color: rgba(167,139,250,0.35); color: var(--purple); }
+
+  .ctrl-pct { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; width: 36px; text-align: right; flex-shrink: 0; }
+
+  /* ── MOCK DOTS ── */
+  .mock-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .mock-row-label { font-size: 11px; color: var(--sub); width: 110px; flex-shrink: 0; }
+  .dots { display: flex; gap: 5px; }
+  .dot {
+    width: 26px; height: 26px; border-radius: 6px;
+    border: 1px solid var(--border-light);
+    font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--dim);
+    transition: all 0.15s;
+  }
+  .dot:hover { border-color: var(--amber); color: var(--amber); }
+  .dot.on { background: var(--amber); border-color: var(--amber); color: #0a0c10; }
+  .mock-tally { font-size: 10px; color: var(--dim); }
+
+  /* ── TOPICS TOGGLE ── */
+  .topics-toggle {
+    display: flex; align-items: center; gap: 8px;
+    padding: 11px 20px;
+    border-top: 1px solid var(--border);
+    cursor: pointer; user-select: none;
+    font-size: 11px; font-weight: 600; color: var(--sub);
+    letter-spacing: 0.04em;
+  }
+  .topics-toggle:hover { background: var(--card-hover); color: var(--text); }
+  .topics-toggle .tchev { font-size: 9px; transition: transform 0.2s; }
+  .topics-toggle.topen .tchev { transform: rotate(90deg); }
+
+  /* ── TOPICS ── */
+  .topics-body { display: none; border-top: 1px solid var(--border); }
+  .topics-body.topen { display: block; }
+
+  .topic-item {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .topic-item:last-child { border-bottom: none; }
+  .topic-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .topic-name { font-size: 12px; font-weight: 500; color: var(--text); }
+  .topic-avg  { font-size: 10px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .topic-ctrls { display: flex; flex-direction: column; gap: 10px; }
+
+  /* topic step ctrl (narrower label) */
+  .t-ctrl-row { display: flex; align-items: center; gap: 10px; }
+  .t-ctrl-label { font-size: 10px; color: var(--dim); width: 60px; flex-shrink: 0; }
+  .t-steps { display: flex; gap: 3px; flex: 1; }
+  .t-step-btn {
+    flex: 1; height: 24px; border-radius: 4px;
+    border: 1px solid var(--border-light);
+    background: transparent; cursor: pointer;
+    font-size: 9px; font-weight: 600; color: var(--dim);
+    transition: all 0.13s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .t-step-btn:hover { border-color: var(--sub); color: var(--sub); }
+  .t-step-btn.active-t { background: var(--blue);  border-color: var(--blue);  color: #0a0c10; }
+  .t-step-btn.active-p { background: var(--green); border-color: var(--green); color: #0a0c10; }
+  .t-step-btn.active-r { background: var(--purple);border-color: var(--purple);color: #0a0c10; }
+  .t-step-btn.filled-t { background: rgba(77,156,248,0.18);  border-color: rgba(77,156,248,0.35);  color: var(--blue); }
+  .t-step-btn.filled-p { background: rgba(63,185,80,0.18);   border-color: rgba(63,185,80,0.35);   color: var(--green); }
+  .t-step-btn.filled-r { background: rgba(167,139,250,0.18); border-color: rgba(167,139,250,0.35); color: var(--purple); }
+  .t-ctrl-pct { font-size: 10px; font-weight: 600; width: 30px; text-align: right; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--card); border: 1px solid var(--border-light);
+    border-radius: 8px; padding: 8px 14px;
+    font-size: 11px; color: var(--sub);
+    opacity: 0; transition: opacity 0.25s; pointer-events: none;
+    z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+
+  /* ── LOADING ── */
+  .loading { display: flex; align-items: center; justify-content: center; height: 200px; color: var(--dim); }
+
+  @media (max-width: 480px) {
+    .topbar { flex-direction: column; align-items: flex-start; }
+    .stats-row { gap: 14px; }
+    .card-progress { min-width: 100px; }
+    .ctrl-label { width: 70px; font-size: 10px; }
+    .mock-row-label { width: 70px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-title">GATE CSE 2027</div>
+    <div class="topbar-sub">Progress Tracker</div>
+  </div>
+  <div class="stats-row">
+    <div class="stat"><div class="stat-val blue"   id="ot">0%</div><div class="stat-lbl">Theory</div></div>
+    <div class="stat"><div class="stat-val green"  id="op">0%</div><div class="stat-lbl">PYQs</div></div>
+    <div class="stat"><div class="stat-val purple" id="or">0%</div><div class="stat-lbl">Revision</div></div>
+  </div>
+</div>
+
+<div class="main" id="app"><div class="loading">Loading…</div></div>
+<div class="toast" id="toast">Saved ✓</div>
+
+<script>
+const STEPS = [0, 25, 50, 75, 100];
+const TYPES = ['theory','pyq','revision'];
+const COL   = {theory:'blue', pyq:'green', revision:'purple'};
+const LBL   = {theory:'Theory', pyq:'PYQs', revision:'Revision'};
+
+const S = [
+  {id:"apti",    name:"Aptitude",                              marks:15,roi:"S",priority:0,phase:"Foundation",
+   topics:[{id:"verbal",n:"Verbal Ability"},{id:"quant",n:"Quantitative Aptitude"},{id:"logic",n:"Logical Reasoning"}]},
+  {id:"la",      name:"Linear Algebra",                        marks:7, roi:"S",priority:1,phase:"Foundation",
+   topics:[{id:"mat",n:"Matrices & Determinants"},{id:"eig",n:"Eigenvalues & Eigenvectors"},{id:"rank",n:"Rank & Systems of Equations"},{id:"lin",n:"Linear Transformations"}]},
+  {id:"discrete",name:"Discrete Mathematics",                  marks:10,roi:"S",priority:2,phase:"Foundation",
+   topics:[{id:"log",n:"Mathematical Logic"},{id:"set",n:"Set Theory & Relations"},{id:"gra",n:"Graph Theory"},{id:"com",n:"Combinatorics & Counting"},{id:"grp",n:"Algebraic Structures"}]},
+  {id:"dsa",     name:"Programming & DSA",                     marks:13,roi:"S",priority:3,phase:"Foundation",
+   topics:[{id:"arr",n:"Arrays, Linked Lists, Stacks, Queues"},{id:"tre",n:"Trees & BSTs"},{id:"gal",n:"Graph Algorithms (BFS/DFS/MST/SP)"},{id:"sor",n:"Sorting & Searching"},{id:"dp",n:"Dynamic Programming"},{id:"cpr",n:"C Programming"}]},
+  {id:"os",      name:"Operating Systems",                     marks:10,roi:"S",priority:4,phase:"Foundation",
+   topics:[{id:"pro",n:"Processes & Threads"},{id:"sch",n:"CPU Scheduling"},{id:"syn",n:"Synchronisation & Semaphores"},{id:"dea",n:"Deadlock"},{id:"mem",n:"Memory Management & Paging"},{id:"fs",n:"File Systems"}]},
+  {id:"dbms",    name:"DBMS",                                  marks:10,roi:"S",priority:5,phase:"Foundation",
+   topics:[{id:"er",n:"ER Model & Relational Model"},{id:"sql",n:"Relational Algebra & SQL"},{id:"nor",n:"Normalisation (1NF–BCNF)"},{id:"txn",n:"Transactions & Concurrency"},{id:"idx",n:"Indexing & Hashing"}]},
+  {id:"toc",     name:"Theory of Computation",                 marks:10,roi:"A",priority:6,phase:"Theory & Hardware",
+   topics:[{id:"dfa",n:"DFA & NFA"},{id:"reg",n:"Regular Expressions & Languages"},{id:"cfg",n:"CFGs & PDAs"},{id:"tm",n:"Turing Machines"},{id:"dec",n:"Decidability & Complexity"}]},
+  {id:"cd",      name:"Compiler Design",                       marks:6, roi:"A",priority:7,phase:"Theory & Hardware",
+   topics:[{id:"lex",n:"Lexical Analysis"},{id:"par",n:"Parsing (LL, LR)"},{id:"sem",n:"Semantic Analysis & SDT"},{id:"cod",n:"Code Generation & Optimisation"}]},
+  {id:"dl",      name:"Digital Logic",                         marks:6, roi:"A",priority:8,phase:"Theory & Hardware",
+   topics:[{id:"boo",n:"Boolean Algebra & Minimisation"},{id:"kmp",n:"K-Maps"},{id:"cir",n:"Combinational Circuits"},{id:"seq",n:"Sequential Circuits & Flip-Flops"}]},
+  {id:"coa",     name:"Computer Organisation & Architecture",  marks:10,roi:"A",priority:9,phase:"Theory & Hardware",
+   topics:[{id:"num",n:"Number Systems & Arithmetic"},{id:"pip",n:"Pipelining"},{id:"cac",n:"Cache Memory & Mapping"},{id:"adr",n:"Addressing Modes & ISA"},{id:"io",n:"I/O & Interrupts"}]},
+  {id:"cn",      name:"Computer Networks",                     marks:12,roi:"A",priority:10,phase:"Endgame",
+   topics:[{id:"dl2",n:"Data Link Layer (Sliding Window, CRC)"},{id:"net",n:"Network Layer (IP, Subnetting, Routing)"},{id:"tcp",n:"Transport Layer (TCP, UDP, Congestion)"},{id:"app",n:"Application Layer (DNS, HTTP)"},{id:"osi",n:"OSI Overview"}]},
+  {id:"prob",    name:"Probability & Statistics",              marks:7, roi:"A",priority:11,phase:"Endgame",
+   topics:[{id:"bay",n:"Probability Basics & Bayes"},{id:"dis",n:"Standard Distributions"},{id:"sta",n:"Statistics & Expectation"}]},
+  {id:"calc",    name:"Calculus",                              marks:4, roi:"B",priority:12,phase:"Endgame",
+   topics:[{id:"lim",n:"Limits & Continuity"},{id:"dif",n:"Differentiation & Maxima/Minima"},{id:"int",n:"Basic Definite Integrals"}]},
+];
+
+let state = {};
+const LS_KEY = 'gate_cse_2027_v2';
+const g = k => { if(!state[k]) state[k]={theory:0,pyq:0,revision:0,mocks:0}; return state[k]; };
+const avg3 = k => { const e=g(k); return Math.round(((e.theory||0)+(e.pyq||0)+(e.revision||0))/3); };
+
+// ── STEP BUTTONS ─────────────────────────────────────────────────────────────
+// Returns HTML for 5 step buttons (0,25,50,75,100) for a given key+type
+function stepBtns(key, type, cls, btnCls) {
+  const cur = g(key)[type] || 0;
+  return STEPS.map(v => {
+    let c = '';
+    if (v === cur && v > 0) c = `active-${COL[type]}`; // selected step
+    else if (v > 0 && v < cur) c = `filled-${COL[type]}`; // already passed
+    const label = v === 0 ? '–' : (v === 100 ? '✓' : v+'%');
+    return `<button class="${btnCls} ${c}" onclick="setVal('${key}','${type}',${v},event)">${label}</button>`;
+  }).join('');
+}
+
+// Mini bar for the card header (still a progress bar, read-only)
+function miniBar(key) {
+  return TYPES.map(t => {
+    const v = g(key)[t] || 0;
+    const colors = {theory:'#4d9cf8', pyq:'#3fb950', revision:'#a78bfa'};
+    return `<div class="mini-bar-row">
+      <span class="mini-label">${LBL[t]}</span>
+      <div class="mini-track"><div class="mini-fill" style="width:${v}%;background:${colors[t]}"></div></div>
+      <span class="mini-pct">${v}%</span>
+    </div>`;
+  }).join('');
+}
+
+function mockDots(key, max=5) {
+  const filled = Math.min(g(key).mocks||0, max);
+  const d = Array.from({length:max}, (_,i) =>
+    `<div class="dot${i<filled?' on':''}" onclick="setMock('${key}',${i},event)">${i+1}</div>`
+  ).join('');
+  return `<div class="mock-row">
+    <span class="mock-row-label">Subject mocks</span>
+    <div class="dots">${d}</div>
+    <span class="mock-tally">${filled}/${max}</span>
+  </div>`;
+}
+
+function subjectControls(id) {
+  return TYPES.map(t => {
+    const v = g(id)[t] || 0;
+    const colors = {theory:'#4d9cf8', pyq:'#3fb950', revision:'#a78bfa'};
+    return `<div class="ctrl-row">
+      <span class="ctrl-label">${LBL[t]}</span>
+      <div class="steps">${stepBtns(id, t, 'ctrl-row', 'step-btn')}</div>
+      <span class="ctrl-pct" style="color:${colors[t]}">${v}%</span>
+    </div>`;
+  }).join('');
+}
+
+function topicItem(sk, t) {
+  const k = `${sk}_${t.id}`, ta = avg3(k);
+  const colors = {theory:'#4d9cf8', pyq:'#3fb950', revision:'#a78bfa'};
+  return `<div class="topic-item">
+    <div class="topic-name-row">
+      <span class="topic-name">${t.n}</span>
+      <span class="topic-avg">${ta}%</span>
+    </div>
+    <div class="topic-ctrls">
+      ${TYPES.map(type => {
+        const v = g(k)[type] || 0;
+        return `<div class="t-ctrl-row">
+          <span class="t-ctrl-label">${LBL[type]}</span>
+          <div class="t-steps">${stepBtns(k, type, 't-ctrl-row', 't-step-btn')}</div>
+          <span class="t-ctrl-pct" style="color:${colors[type]}">${v}%</span>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function renderAll() {
+  const phases = [...new Set(S.map(s=>s.phase))];
+  let html = '';
+  phases.forEach(ph => {
+    html += `<div class="phase-label">${ph}</div>`;
+    S.filter(s=>s.phase===ph).forEach(s => {
+      const rc = s.roi==='S'?'roi-s':s.roi==='A'?'roi-a':'roi-b';
+      const pc = s.roi==='S'?'pill-s':s.roi==='A'?'pill-a':'pill-b';
+      html += `<div class="card ${rc}" id="card-${s.id}">
+        <div class="card-head" onclick="toggleCard('${s.id}')">
+          <span class="card-rank">${s.priority===0?'★':s.priority}</span>
+          <div class="card-info">
+            <div class="card-name">${s.name}</div>
+            <div class="card-meta">
+              <span class="pill pill-marks">~${s.marks} marks</span>
+              <span class="pill ${pc}">ROI ${s.roi}</span>
+            </div>
+          </div>
+          <div class="card-progress">${miniBar(s.id)}</div>
+          <span class="card-chevron">▶</span>
+        </div>
+        <div class="card-body">
+          <div class="full-bars">
+            ${subjectControls(s.id)}
+            ${mockDots(s.id)}
+          </div>
+          <div class="topics-toggle" id="ttog-${s.id}" onclick="toggleTopics('${s.id}')">
+            <span class="tchev">▶</span>
+            <span>Topics (${s.topics.length})</span>
+          </div>
+          <div class="topics-body" id="tbody-${s.id}">
+            ${s.topics.map(t=>topicItem(s.id,t)).join('')}
+          </div>
+        </div>
+      </div>`;
+    });
+  });
+  document.getElementById('app').innerHTML = html;
+  updateOverall();
+}
+
+function updateOverall() {
+  const keys = S.map(s=>s.id);
+  const avg = t => Math.round(keys.reduce((s,k)=>s+(g(k)[t]||0),0)/keys.length);
+  document.getElementById('ot').textContent = avg('theory')+'%';
+  document.getElementById('op').textContent = avg('pyq')+'%';
+  document.getElementById('or').textContent = avg('revision')+'%';
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────────
+function setVal(key, type, val, event) {
+  event.stopPropagation(); // prevent card toggle
+  const e = g(key);
+  e[type] = (e[type] === val) ? 0 : val; // tap same step = reset to 0
+  schedSave();
+  renderAll();
+}
+
+function setMock(key, idx, event) {
+  event.stopPropagation();
+  const e = g(key);
+  e.mocks = (e.mocks||0) === idx+1 ? idx : idx+1;
+  schedSave();
+  renderAll();
+}
+
+function toggleCard(id) {
+  document.getElementById(`card-${id}`).classList.toggle('expanded');
+}
+function toggleTopics(id) {
+  document.getElementById(`ttog-${id}`).classList.toggle('topen');
+  document.getElementById(`tbody-${id}`).classList.toggle('topen');
+}
+
+// ── SAVE ─────────────────────────────────────────────────────────────────────
+let saveT = null;
+function schedSave() { clearTimeout(saveT); saveT = setTimeout(persist, 600); }
+function persist() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){}
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1400);
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+function init() {
+  try { const raw = localStorage.getItem(LS_KEY); if(raw) state = JSON.parse(raw); } catch(e){}
+  renderAll();
+}
+init();
+</script>
+</body>
+</html>
